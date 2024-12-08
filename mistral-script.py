@@ -56,49 +56,44 @@ def query_model(prompts, qa_model, tokenizer, do_sample=True, top_k=10,
     del model_inputs, generated_ids
     return [model_ans]
 
-def main():
-    print("Loading model...")
-    tokenizer, qa_model = load_model("mistralai/Mistral-7B-Instruct-v0.2", only_tokenizer=False)
+# %%
+tokenizer, qa_model = load_model("mistralai/Mistral-7B-Instruct-v0.2", only_tokenizer=False)
+
+# %%
+import warnings
+import pandas as pd
+import math
+warnings.filterwarnings("ignore")
+
+df = pd.read_csv("unigram_word_map.csv")
+df['Mistral_answer'] = None
+batch_size = 1000
+
+# Calculate the number of batches
+num_batches = math.ceil(len(df) / batch_size)
+
+for batch in range(num_batches):
+    start_idx = batch * batch_size
+    end_idx = min((batch + 1) * batch_size, len(df))
     
-    import warnings
-    import pandas as pd
-    import math
-    warnings.filterwarnings("ignore")
+    # Process each batch
+    for index in range(start_idx, end_idx):
+        print(index)
+        row = df.iloc[index]
+        segments = row['segments']
+        if segments == '' or pd.isna(segments):
+            df.at[index, 'Mistral_answer'] = ""
+            continue
+        coherent_segments = []
+        for i in segments:
+            post_text = "I am giving you some words that represent a topic. Make a coherent topic out of those words. Do not add additional meaning or inferences. Try to restrict to those words alone as much as possible. "
+            post_text = post_text + i
+            model_answers = query_model([post_text], qa_model, tokenizer, temperature=0.000001, INPUT_DEVICE="cuda", do_sample=False)
+            coherent_segments.append(model_answers[0])
+        df.at[index, 'Mistral_answer'] = coherent_segments
+    
+    # Save the dataframe after each batch
+    df.to_csv(f"processed_batch_mistral_{batch}.csv", index=False)
+    print(f"Batch {batch + 1}/{num_batches} processed and saved.")
 
-    print("Reading CSV file...")
-    # read from CSV, 5 words per label
-    df = pd.read_csv("/Users/yoshe/Desktop/CS410-topic-summarization-and-labeling/video_transcripts_with_corrected_list_of_lists.csv")
-    df['Generated_labels'] = ''
-    batch_size = 1000
 
-    # Calculate the number of batches
-    num_batches = math.ceil(len(df) / batch_size)
-    print(f"Processing {num_batches} batches...")
-
-    for batch in range(num_batches):
-        start_idx = batch * batch_size
-        end_idx = min((batch + 1) * batch_size, len(df))
-        
-        print(f"\nProcessing batch {batch + 1}/{num_batches}")
-        # Process each batch
-        for index in range(start_idx, end_idx):
-            print(f"Processing row {index}")
-            row = df.iloc[index]
-            list_of_labels = list(row['Labels'])
-            list_of_generated_labels = []
-            for label in list_of_labels:
-                string_of_words = ""
-                for word in label:
-                    string_of_words += word + " "
-                post_text = "You are being given a list of words, and you need to generate a coherent label for the video based on the words. The label should should not be very long, so keep it short. Just return the label and no other text.The words are: " + string_of_words
-                model_answers = query_model([post_text], qa_model, tokenizer, temperature=0.000001, INPUT_DEVICE="cuda", do_sample=False)
-                list_of_generated_labels.append(model_answers[0])
-            df.at[index, 'Generated_labels'] = list_of_generated_labels
-        
-        # Save the dataframe after each batch
-        output_file = f"processed_batch_mistral_{batch}.csv"
-        df.to_csv(output_file, index=False)
-        print(f"Batch {batch + 1}/{num_batches} processed and saved to {output_file}")
-
-if __name__ == "__main__":
-    main()
