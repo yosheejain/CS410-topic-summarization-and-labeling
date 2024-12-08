@@ -63,9 +63,16 @@ tokenizer, qa_model = load_model("mistralai/Mistral-7B-Instruct-v0.2", only_toke
 import warnings
 import pandas as pd
 import math
+import ast
+
 warnings.filterwarnings("ignore")
 
+# Load the CSV
 df = pd.read_csv("unigram_word_map.csv")
+
+# Convert 'segments' from string representation to actual lists
+df['segments'] = df['segments'].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
+
 df['Mistral_answer'] = None
 batch_size = 1000
 
@@ -81,19 +88,28 @@ for batch in range(num_batches):
         print(index)
         row = df.iloc[index]
         segments = row['segments']
-        if segments == '' or pd.isna(segments):
+        print(segments)
+        if segments is None or pd.isna(segments).all() or len(segments) == 0:
             df.at[index, 'Mistral_answer'] = ""
-            continue
-        coherent_segments = []
-        for i in segments:
-            post_text = "I am giving you some words that represent a topic. Make a coherent topic out of those words. Do not add additional meaning or inferences. Try to restrict to those words alone as much as possible. "
-            post_text = post_text + i
-            model_answers = query_model([post_text], qa_model, tokenizer, temperature=0.000001, INPUT_DEVICE="cuda", do_sample=False)
-            coherent_segments.append(model_answers[0])
-        df.at[index, 'Mistral_answer'] = coherent_segments
+        else:
+            coherent_segments = []
+            for segment in segments:
+                print(segment)
+                # Assuming `query_model` is correctly defined elsewhere
+                post_text = (
+                    "I am giving you some words that represent a topic. "
+                    "Make a coherent topic out of those words. Do not add additional meaning or inferences. "
+                    "Try to restrict to those words alone as much as possible. "
+                    + " ".join(segment)
+                )
+                model_answers = query_model(
+                    [post_text], qa_model, tokenizer, temperature=0.000001, INPUT_DEVICE="cuda", do_sample=False
+                )
+                coherent_segments.append(model_answers[0])
+            df.at[index, 'Mistral_answer'] = coherent_segments
     
     # Save the dataframe after each batch
-    df.to_csv(f"processed_batch_mistral_{batch}.csv", index=False)
+    df.to_csv(f"processed_batch_mistral_410_{batch}.csv", index=False)
     print(f"Batch {batch + 1}/{num_batches} processed and saved.")
 
 
