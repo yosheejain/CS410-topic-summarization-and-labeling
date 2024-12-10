@@ -14,11 +14,11 @@ Navigate to the jupyter notebook named `CS_410_Software.ipynb` and run the code.
 
 ### Part 1: Data Collection
 
-The first part of the code is used to collect data from the YouTube API and the Youtube 8M dataset. These are stored in the `files` folder.
+The first part of the code is used to collect data from the YouTube API and the Youtube 8M dataset. These are stored in the `files` folder and converted into JSONs in the `output_json_files` folder.
 
 ### Part 2: Data Preprocessing
 
-The second part of the code is used to preprocess the data. This includes removing stop words, stemming, and lemmatizing the data. The processed data is stored in the `output_json_files` folder.
+The second part of the code is used to preprocess the data. This includes removing stop words, stemming, and lemmatizing the data. The processed data is stored in the `cleaned_dataset.csv` file.
 
 ### Part 3: Model Training (Topic Summarization)
 
