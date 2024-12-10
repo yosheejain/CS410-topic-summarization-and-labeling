@@ -1,1 +1,6 @@
-python-Levenshtein
+tensorflow
+requests
+pandas
+tqdm
+youtube_transcript_api
+openai
